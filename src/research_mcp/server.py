@@ -346,7 +346,12 @@ class MCPServer:
         logger.info(f"Available tasks: {', '.join(self.router.get_available_tasks())}")
         
         async with self.client:
-            await stdio_server(self.server.request_ctx)
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream, 
+                    write_stream, 
+                    self.server.create_initialization_options()
+                )
 
 # CLI setup
 app = typer.Typer(help="Research MCP Tool - OpenRouter integration for Claude Code")
