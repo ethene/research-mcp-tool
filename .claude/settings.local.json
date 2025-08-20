@@ -11,9 +11,15 @@
       "Bash(pytest:*)",
       "Bash(pip install:*)",
       "Bash(git push:*)",
-      "Bash(research-mcp serve:*)"
+      "Bash(research-mcp serve:*)",
+      "mcp__openrouter__validate_model",
+      "mcp__openrouter__route_chat"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "openrouter"
+  ]
 }

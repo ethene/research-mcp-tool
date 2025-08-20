@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "openrouter": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "research_mcp.server"
+      ],
+      "env": {}
+    }
+  }
+}
