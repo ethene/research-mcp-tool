@@ -103,12 +103,45 @@ Available options:
 
 ## 🔗 Claude Code Integration
 
-### Method 1: Automatic Registration (Recommended)
+### Method 1: Quick Setup from Any Repository
 
-Add this MCP server to Claude Code:
+Install and add the MCP server to Claude Code from any repository:
 
 ```bash
-claude mcp add research-mcp-tool
+# Install the tool globally
+pip install git+https://github.com/ethene/research-mcp-tool.git
+
+# Add to Claude Code MCP configuration  
+claude mcp add research-mcp-tool \
+  --command research-mcp \
+  --args "--stdio" \
+  --env OPENROUTER_API_KEY=your-api-key-here
+```
+
+For environment variable setup:
+
+```bash
+# Option 1: Set environment in MCP config
+claude mcp add research-mcp-tool \
+  --command research-mcp \
+  --args "--stdio" \
+  --env OPENROUTER_API_KEY=$OPENROUTER_API_KEY
+
+# Option 2: Use with local .env file
+claude mcp add research-mcp-tool \
+  --command research-mcp \  
+  --args "--stdio --env-file /path/to/your/.env" \
+  --cwd /path/to/research-mcp-tool
+```
+
+**Quick Setup for Development**:
+```bash
+# From any directory
+git clone https://github.com/ethene/research-mcp-tool.git
+cd research-mcp-tool
+cp .env.example .env
+# Edit .env with your API key
+claude mcp add research-mcp-tool research-mcp --stdio
 ```
 
 ### Method 2: Manual Configuration
@@ -298,26 +331,129 @@ mypy src/research_mcp/
 
 ## 🔍 Troubleshooting
 
-### Common Issues
+### Authentication Issues
+
+**401 Unauthorized / Invalid API Key**
+```bash
+# Verify your API key format
+grep OPENROUTER_API_KEY .env
+# Should show: OPENROUTER_API_KEY=sk-or-v1-...
+
+# Test API key validity
+python -c "
+import httpx, os
+from dotenv import load_dotenv
+load_dotenv()
+api_key = os.getenv('OPENROUTER_API_KEY')
+resp = httpx.get('https://openrouter.ai/api/v1/models', 
+                headers={'Authorization': f'Bearer {api_key}'})
+print(f'API Key Status: {resp.status_code}')
+"
+```
+
+**Missing Environment Variables**
+- Ensure `.env` file exists in working directory
+- Claude Code MCP config must include `env` section with API key
+- Check file permissions: `ls -la .env`
+
+### Network & API Issues
+
+**Network connection failures**
+```bash
+# Test OpenRouter connectivity
+curl -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+     https://openrouter.ai/api/v1/models
+```
+
+**Rate limiting (429 errors)**
+- OpenRouter enforces rate limits based on your plan
+- Upgrade your OpenRouter plan for higher limits
+- Implement request delays if needed
+
+**Timeout errors**
+- Large requests may timeout - reduce `max_tokens` parameter
+- Check your network stability
+- Perplexity models with web search take longer
+
+### Configuration Issues
+
+**YAML parse errors in routing.yaml**
+```bash
+# Validate YAML syntax
+python -c "
+import yaml
+with open('routing.yaml', 'r') as f:
+    config = yaml.safe_load(f)
+    print('✅ YAML is valid')
+    print(f'Tasks: {list(config[\"tasks\"].keys())}')
+"
+```
+
+**Model fallback triggers**
+```bash
+# Check which models are available
+python -c "
+from research_mcp.routing import TaskRouter
+router = TaskRouter('routing.yaml')
+print('Available models:', router.get_available_models())
+print('Fallback models:', router.get_fallback_models())
+"
+```
+
+**Common YAML errors:**
+- Indentation must use spaces, not tabs
+- Colons must have space after them: `task: model`
+- Model names are case-sensitive: `perplexity/sonar-deep-research`
+
+### Server Issues
 
 **"No module named 'mcp'"**
 ```bash
 pip install modelcontextprotocol
 ```
 
-**"OpenRouter API key not found"**
-- Check `.env` file exists and contains `OPENROUTER_API_KEY=sk-or-...`
-- Ensure Claude Code MCP config includes the `env` section
+**Server startup failures**
+```bash
+# Test server components
+python test_mcp_connection.py
 
-**"Model not found" errors**
-- Check if model exists: `python tests/test_live.py`
-- Verify your OpenRouter account has access to the model
-- Check routing.yaml for typos in model names
+# Run server manually with verbose output
+research-mcp --stdio --env-file .env
+```
 
 **Server not responding in Claude Code**
-- Test server manually: `research-mcp --stdio`
-- Check Claude Code MCP logs
-- Verify the command path in MCP configuration
+- Verify command path: `which research-mcp`
+- Test manually: `research-mcp --stdio` 
+- Check Claude Code MCP logs in settings
+- Ensure working directory is correct in MCP config
+
+### Model Access Issues
+
+**"Model not found" errors**
+```bash
+# Check specific model availability
+python -c "
+from research_mcp.openrouter import OpenRouterClient
+import asyncio, os
+from dotenv import load_dotenv
+
+load_dotenv()
+async def check():
+    client = OpenRouterClient(os.getenv('OPENROUTER_API_KEY'))
+    async with client:
+        models = await client.list_models()
+        target = 'perplexity/sonar-deep-research'
+        found = any(m['id'] == target for m in models['data'])
+        print(f'{target}: {\"✅ Available\" if found else \"❌ Not found\"}')
+
+asyncio.run(check())
+"
+```
+
+**Model access restrictions**
+- Some models require special access or higher billing tier
+- Verify your OpenRouter account has credits
+- Check model-specific requirements in OpenRouter dashboard
 
 ### Debug Mode
 
