@@ -33,10 +33,26 @@ This tool acts as an intelligent routing layer between Claude Code and OpenRoute
 
 Start the MCP server:
 ```bash
-research-mcp
+research-mcp serve --stdio
+```
+
+Or using Python module directly:
+```bash
+python -m research_mcp.server serve --stdio
 ```
 
 The server will listen for MCP protocol messages and route requests to appropriate OpenRouter models based on the routing configuration in `routing.yaml`.
+
+### CLI Options
+
+```bash
+research-mcp serve --help
+```
+
+Available options:
+- `--env-file .env` - Environment file path (default: .env)
+- `--routing routing.yaml` - Routing configuration file (default: routing.yaml)  
+- `--stdio` - Use stdio transport for MCP (default: True)
 
 ## Register with Claude Code
 
@@ -52,6 +68,7 @@ Then configure it in your Claude Code MCP settings:
 {
   "research-mcp-tool": {
     "command": "research-mcp",
+    "args": ["serve", "--stdio"],
     "env": {
       "OPENROUTER_API_KEY": "your-api-key-here"
     }
