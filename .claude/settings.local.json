@@ -9,7 +9,9 @@
       "Bash(gh repo create:*)",
       "Bash(python:*)",
       "Bash(pytest:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(git push:*)",
+      "Bash(research-mcp serve:*)"
     ],
     "deny": [],
     "ask": []

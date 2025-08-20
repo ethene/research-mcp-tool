@@ -13,11 +13,9 @@ from rich.console import Console
 from rich.logging import RichHandler
 import logging
 
-from mcp import (
-    server,
-    types,
-    stdio_server
-)
+from mcp import Tool, McpError
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
 
 from .openrouter import OpenRouterClient
 from .routing import TaskRouter
@@ -63,134 +61,129 @@ class MCPServer:
         """Initialize MCP server."""
         self.client = OpenRouterClient(api_key, base_url)
         self.router = TaskRouter(routing_config)
-        # For now, let's just initialize the core components
+        self.server = Server("research-mcp-tool")
+        self._setup_handlers()
         logger.info("MCP Server initialized")
     
-    def _setup_tools(self):
-        """Set up MCP tools."""
+    def _setup_handlers(self):
+        """Set up MCP tool handlers."""
         
-        # Tool 1: list_models
         @self.server.list_tools()
-        async def handle_list_tools() -> ListToolsResult:
+        async def handle_list_tools():
             """List available tools."""
-            return ListToolsResult(
-                tools=[
-                    Tool(
-                        name="list_models",
-                        description="List available models from OpenRouter, optionally filtered by name/provider",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "filter": {
-                                    "type": "string",
-                                    "description": "Optional filter to match model names or providers"
-                                }
+            return [
+                Tool(
+                    name="list_models",
+                    description="List available models from OpenRouter, optionally filtered by name/provider",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "filter": {
+                                "type": "string",
+                                "description": "Optional filter to match model names or providers"
                             }
                         }
-                    ),
-                    Tool(
-                        name="validate_model",
-                        description="Validate if a model exists and return its details",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "Model name to validate"
-                                }
+                    }
+                ),
+                Tool(
+                    name="validate_model",
+                    description="Validate if a model exists and return its details",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Model name to validate"
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                ),
+                Tool(
+                    name="route_chat", 
+                    description="Route a chat request to appropriate model based on task type",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "Task type (research_deep, research_fast, spec_structuring, ux_copy)"
                             },
-                            "required": ["name"]
-                        }
-                    ),
-                    Tool(
-                        name="route_chat",
-                        description="Route a chat request to appropriate model based on task type",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "task": {
-                                    "type": "string",
-                                    "description": "Task type (research_deep, research_fast, spec_structuring, ux_copy)"
-                                },
-                                "messages": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "role": {"type": "string"},
-                                            "content": {"type": "string"}
-                                        },
-                                        "required": ["role", "content"]
-                                    },
-                                    "description": "Chat messages in OpenAI format"
-                                },
-                                "options": {
+                            "messages": {
+                                "type": "array",
+                                "items": {
                                     "type": "object",
                                     "properties": {
-                                        "temperature": {"type": "number"},
-                                        "max_tokens": {"type": "integer"},
-                                        "top_p": {"type": "number"},
-                                        "reasoning": {"type": "boolean"},
-                                        "search_limit": {"type": "integer"}
+                                        "role": {"type": "string"},
+                                        "content": {"type": "string"}
                                     },
-                                    "description": "Optional generation parameters"
-                                }
+                                    "required": ["role", "content"]
+                                },
+                                "description": "Chat messages in OpenAI format"
                             },
-                            "required": ["task", "messages"]
-                        }
-                    ),
-                    Tool(
-                        name="cost_estimate",
-                        description="Estimate cost for using a specific model",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "model": {
-                                    "type": "string",
-                                    "description": "Model name"
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "temperature": {"type": "number"},
+                                    "max_tokens": {"type": "integer"},
+                                    "top_p": {"type": "number"},
+                                    "reasoning": {"type": "boolean"},
+                                    "search_limit": {"type": "integer"}
                                 },
-                                "tokens_in": {
-                                    "type": "integer",
-                                    "description": "Input tokens"
-                                },
-                                "tokens_out": {
-                                    "type": "integer",
-                                    "description": "Output tokens"
-                                },
-                                "searches": {
-                                    "type": "integer",
-                                    "description": "Number of searches (for Perplexity models)",
-                                    "default": 0
-                                }
+                                "description": "Optional generation parameters"
+                            }
+                        },
+                        "required": ["task", "messages"]
+                    }
+                ),
+                Tool(
+                    name="cost_estimate",
+                    description="Estimate cost for using a specific model",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "model": {
+                                "type": "string",
+                                "description": "Model name"
                             },
-                            "required": ["model", "tokens_in", "tokens_out"]
-                        }
-                    )
-                ]
-            )
+                            "tokens_in": {
+                                "type": "integer", 
+                                "description": "Input tokens"
+                            },
+                            "tokens_out": {
+                                "type": "integer",
+                                "description": "Output tokens"
+                            },
+                            "searches": {
+                                "type": "integer",
+                                "description": "Number of searches (for Perplexity models)",
+                                "default": 0
+                            }
+                        },
+                        "required": ["model", "tokens_in", "tokens_out"]
+                    }
+                )
+            ]
         
         @self.server.call_tool()
-        async def handle_call_tool(request: CallToolRequest) -> CallToolResult:
+        async def handle_call_tool(name: str, arguments: dict):
             """Handle tool calls."""
             try:
-                if request.name == "list_models":
-                    return await self._list_models(request.arguments or {})
-                elif request.name == "validate_model":
-                    return await self._validate_model(request.arguments or {})
-                elif request.name == "route_chat":
-                    return await self._route_chat(request.arguments or {})
-                elif request.name == "cost_estimate":
-                    return await self._cost_estimate(request.arguments or {})
+                if name == "list_models":
+                    return await self._list_models(arguments)
+                elif name == "validate_model":
+                    return await self._validate_model(arguments)
+                elif name == "route_chat":
+                    return await self._route_chat(arguments)
+                elif name == "cost_estimate":
+                    return await self._cost_estimate(arguments)
                 else:
-                    raise ValueError(f"Unknown tool: {request.name}")
+                    raise McpError(f"Unknown tool: {name}")
             except Exception as e:
                 logger.error(f"Tool call failed: {e}")
-                return CallToolResult(
-                    content=[TextContent(type="text", text=f"Error: {str(e)}")],
-                    isError=True
-                )
+                raise McpError(f"Tool error: {str(e)}")
     
-    async def _list_models(self, args: Dict[str, Any]) -> CallToolResult:
+    async def _list_models(self, args: Dict[str, Any]):
         """List available models."""
         models_data = await self.client.list_models()
         models = models_data.get("data", [])
@@ -219,15 +212,13 @@ class MCPServer:
             "models": formatted_models
         }
         
-        return CallToolResult(
-            content=[TextContent(type="text", text=str(result))]
-        )
+        return [{"type": "text", "text": str(result)}]
     
-    async def _validate_model(self, args: Dict[str, Any]) -> CallToolResult:
+    async def _validate_model(self, args: Dict[str, Any]):
         """Validate model existence."""
         model_name = args.get("name")
         if not model_name:
-            raise ValueError("Model name is required")
+            raise McpError("Model name is required")
         
         models_data = await self.client.list_models()
         models = models_data.get("data", [])
@@ -242,26 +233,22 @@ class MCPServer:
                     "provider": model.get("owned_by", ""),
                     "exists": True
                 }
-                return CallToolResult(
-                    content=[TextContent(type="text", text=str(result))]
-                )
+                return [{"type": "text", "text": str(result)}]
         
         # Model not found
         result = {"exists": False, "error": f"Model '{model_name}' not found"}
-        return CallToolResult(
-            content=[TextContent(type="text", text=str(result))]
-        )
+        return [{"type": "text", "text": str(result)}]
     
-    async def _route_chat(self, args: Dict[str, Any]) -> CallToolResult:
+    async def _route_chat(self, args: Dict[str, Any]):
         """Route chat request to appropriate model."""
         task = args.get("task")
         messages = args.get("messages")
         options = args.get("options", {})
         
         if not task:
-            raise ValueError("Task is required")
+            raise McpError("Task is required")
         if not messages:
-            raise ValueError("Messages are required")
+            raise McpError("Messages are required")
         
         # Get available models
         models_data = await self.client.list_models()
@@ -271,7 +258,7 @@ class MCPServer:
         try:
             selected_model = self.router.route_task(task, available_models)
         except ValueError as e:
-            raise ValueError(str(e))
+            raise McpError(str(e))
         
         # Prepare request options
         chat_options = {}
@@ -287,7 +274,6 @@ class MCPServer:
             chat_options["reasoning"] = True
         
         if options.get("search_limit") and "perplexity" in selected_model.lower():
-            # Note: This would need OpenRouter's specific parameter handling
             logger.info(f"Search limit {options['search_limit']} noted for {selected_model}")
         
         # Make the chat request
@@ -314,11 +300,9 @@ class MCPServer:
         if "citations" in choice:
             result["citations"] = choice["citations"]
         
-        return CallToolResult(
-            content=[TextContent(type="text", text=str(result))]
-        )
+        return [{"type": "text", "text": str(result)}]
     
-    async def _cost_estimate(self, args: Dict[str, Any]) -> CallToolResult:
+    async def _cost_estimate(self, args: Dict[str, Any]):
         """Estimate cost for model usage."""
         model = args.get("model")
         tokens_in = args.get("tokens_in", 0)
@@ -326,7 +310,7 @@ class MCPServer:
         searches = args.get("searches", 0)
         
         if not model:
-            raise ValueError("Model name is required")
+            raise McpError("Model name is required")
         
         # Get cost data
         cost_data = COST_ESTIMATES.get(model, COST_ESTIMATES["default"])
@@ -354,9 +338,7 @@ class MCPServer:
             "breakdown": breakdown
         }
         
-        return CallToolResult(
-            content=[TextContent(type="text", text=str(result))]
-        )
+        return [{"type": "text", "text": str(result)}]
     
     async def run(self):
         """Run the MCP server."""
@@ -364,7 +346,7 @@ class MCPServer:
         logger.info(f"Available tasks: {', '.join(self.router.get_available_tasks())}")
         
         async with self.client:
-            await stdio_server(self.server)
+            await stdio_server(self.server.request_ctx)
 
 # CLI setup
 app = typer.Typer(help="Research MCP Tool - OpenRouter integration for Claude Code")
