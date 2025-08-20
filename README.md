@@ -80,7 +80,7 @@ python tests/test_end_to_end.py
 
 Start the MCP server:
 ```bash
-research-mcp serve --stdio
+research-mcp --stdio
 ```
 
 Or using Python module directly:
@@ -93,7 +93,7 @@ The server will listen for MCP protocol messages and route requests to appropria
 ### CLI Options
 
 ```bash
-research-mcp serve --help
+research-mcp --help
 ```
 
 Available options:
@@ -119,7 +119,7 @@ Add to your Claude Code MCP settings file:
 {
   "research-mcp-tool": {
     "command": "research-mcp",
-    "args": ["serve", "--stdio"],
+    "args": ["--stdio"],
     "env": {
       "OPENROUTER_API_KEY": "sk-or-your-key-here"
     }
@@ -233,7 +233,7 @@ fallbacks:
 ### CLI Options
 
 ```bash
-research-mcp serve --help
+research-mcp --help
 
 Options:
   --env-file TEXT     Environment file path [default: .env]  
@@ -315,7 +315,7 @@ pip install modelcontextprotocol
 - Check routing.yaml for typos in model names
 
 **Server not responding in Claude Code**
-- Test server manually: `research-mcp serve --stdio`
+- Test server manually: `research-mcp --stdio`
 - Check Claude Code MCP logs
 - Verify the command path in MCP configuration
 
@@ -325,7 +325,7 @@ Enable detailed logging:
 
 ```bash
 export PYTHONPATH=.
-research-mcp serve --stdio --env-file .env
+research-mcp --stdio --env-file .env
 ```
 
 ## 📊 Performance & Costs
@@ -374,7 +374,7 @@ This will verify:
 Start the server manually to test:
 
 ```bash
-research-mcp serve --stdio
+research-mcp --stdio
 ```
 
 You should see:

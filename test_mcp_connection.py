@@ -145,7 +145,7 @@ def print_integration_help():
 {
   "research-mcp-tool": {
     "command": "research-mcp",
-    "args": ["serve", "--stdio"],  
+    "args": ["--stdio"],  
     "env": {
       "OPENROUTER_API_KEY": "your-api-key-here"
     }
