@@ -1,0 +1,9 @@
+tasks:
+  research_deep: perplexity/sonar-deep-research
+  research_fast: perplexity/sonar-reasoning
+  spec_structuring: anthropic/claude-3.7-sonnet
+  ux_copy: openai/gpt-4o-mini
+
+fallbacks:
+  - openai/gpt-4o-mini
+  - meta-llama/llama-3.1-70b-instruct
